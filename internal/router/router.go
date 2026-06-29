@@ -99,7 +99,7 @@ func (r *Router) checkLocalHealth(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("health check: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	return resp.StatusCode == http.StatusOK, nil
 }

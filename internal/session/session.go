@@ -71,7 +71,7 @@ func Open(dbPath, auditLogPath string) (*DB, error) {
 	}
 
 	if _, err := db.Exec(schema); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("applying schema: %w", err)
 	}
 
@@ -141,7 +141,7 @@ func (d *DB) ListSessions() ([]SessionRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var records []SessionRecord
 	for rows.Next() {
@@ -185,7 +185,7 @@ func (d *DB) AuditLog(payload string) error {
 	if err != nil {
 		return fmt.Errorf("opening audit log: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(payload)))
 	line := fmt.Sprintf("%s sha256=%s\n", time.Now().UTC().Format(time.RFC3339), hash)
