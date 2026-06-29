@@ -48,7 +48,7 @@ func runReport(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("opening session db: %w (hint: run 'walk init' first)", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	format := reportFormat
 	if format == "" && globalCfg != nil {
@@ -135,9 +135,11 @@ func printReportJSON(records []session.SessionRecord) error {
 
 func printReportCSV(records []session.SessionRecord) error {
 	w := csv.NewWriter(os.Stdout)
-	w.Write([]string{"id", "model", "tag", "started_at", "tokens_in", "tokens_out", "tokens_cached", "cost_usd"})
+	if err := w.Write([]string{"id", "model", "tag", "started_at", "tokens_in", "tokens_out", "tokens_cached", "cost_usd"}); err != nil {
+		return err
+	}
 	for _, r := range records {
-		w.Write([]string{
+		if err := w.Write([]string{
 			strconv.FormatInt(r.ID, 10),
 			r.Model,
 			r.Tag,
@@ -146,7 +148,9 @@ func printReportCSV(records []session.SessionRecord) error {
 			strconv.FormatInt(r.TokensOut, 10),
 			strconv.FormatInt(r.TokensCached, 10),
 			fmt.Sprintf("%.6f", r.CostUSD),
-		})
+		}); err != nil {
+			return err
+		}
 	}
 	w.Flush()
 	return w.Error()

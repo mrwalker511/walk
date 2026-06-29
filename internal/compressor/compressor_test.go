@@ -23,7 +23,7 @@ func mockLlamaServer(t *testing.T, response string) *httptest.Server {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		} else {
 			http.NotFound(w, r)
 		}
@@ -54,7 +54,7 @@ func TestCompressSuccess(t *testing.T) {
 func TestCompressServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal error"))
+		_, _ = w.Write([]byte("internal error"))
 	}))
 	defer srv.Close()
 
@@ -67,7 +67,7 @@ func TestCompressServerError(t *testing.T) {
 func TestCompressNoChoices(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := chatResponse{Choices: nil}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -84,7 +84,7 @@ func TestCompressAPIError(t *testing.T) {
 				Message string `json:"message"`
 			}{Message: "model not loaded"},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -129,6 +129,6 @@ func BenchmarkCompressLocal(b *testing.B) {
 	text := "This is a sample text for benchmarking the compression function without network calls. "
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		BenchmarkCompress(text)
+		_, _ = BenchmarkCompress(text)
 	}
 }

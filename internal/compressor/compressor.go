@@ -106,7 +106,7 @@ func (c *Compressor) Compress(ctx context.Context, text string) (Result, error) 
 	if err != nil {
 		return Result{}, fmt.Errorf("calling llama.cpp at %s: %w (hint: start with 'llama-server --model /path/to/model.gguf --port 8080')", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
