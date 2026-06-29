@@ -99,6 +99,58 @@ func TestIsKnownModel(t *testing.T) {
 	assert.False(t, IsKnownModel(""))
 }
 
+func TestCountTokens(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		model   string
+		minToks int
+	}{
+		{"empty", "", "claude-sonnet-4-5", 0},
+		{"single word", "hello", "gpt-4o", 1},
+		{"sentence", "The quick brown fox jumps", "gpt-4o-mini", 5},
+		{"model ignored", "hello world", "llama.cpp", 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CountTokens(tt.text, tt.model)
+			assert.GreaterOrEqual(t, got, tt.minToks)
+		})
+	}
+}
+
+func TestEstimateCost(t *testing.T) {
+	tests := []struct {
+		name      string
+		tokens    int
+		model     string
+		direction string
+		expected  float64
+	}{
+		{"claude input", 1_000_000, "claude-sonnet-4-5", "input", 3.00},
+		{"claude output", 1_000_000, "claude-sonnet-4-5", "output", 15.00},
+		{"claude cached", 1_000_000, "claude-sonnet-4-5", "cached", 0.30},
+		{"gpt4o input", 1_000_000, "gpt-4o", "input", 2.50},
+		{"gpt4o output", 1_000_000, "gpt-4o", "output", 10.00},
+		{"gpt4o cached", 1_000_000, "gpt-4o", "cached", 1.25},
+		{"gpt4o-mini input", 1_000_000, "gpt-4o-mini", "input", 0.15},
+		{"gpt4o-mini output", 1_000_000, "gpt-4o-mini", "output", 0.60},
+		{"gemini input", 1_000_000, "gemini-2.5-flash", "input", 0.075},
+		{"gemini output", 1_000_000, "gemini-2.5-flash", "output", 0.30},
+		{"llama free", 1_000_000, "llama.cpp", "input", 0.00},
+		{"unknown model", 1_000_000, "unknown-x", "input", 0.00},
+		{"unknown direction defaults to input", 1_000_000, "gpt-4o", "inbound", 2.50},
+		{"case insensitive Output", 1_000_000, "gpt-4o", "Output", 10.00},
+		{"zero tokens", 0, "claude-sonnet-4-5", "input", 0.00},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := EstimateCost(tt.tokens, tt.model, tt.direction)
+			assert.InDelta(t, tt.expected, got, 0.0001)
+		})
+	}
+}
+
 func TestIsCodeHeavy(t *testing.T) {
 	assert.False(t, IsCodeHeavy(""))
 	assert.False(t, IsCodeHeavy("This is just plain English text with normal words"))
