@@ -104,6 +104,28 @@ func FormatCost(usd float64) string {
 	return fmt.Sprintf("$%.2f", usd)
 }
 
+// CountTokens estimates the token count for text. The model argument is accepted
+// for API symmetry but does not change the approximation (BPE ratios are similar
+// across supported models).
+func CountTokens(text string, _ string) int {
+	return Count(text)
+}
+
+// EstimateCost returns the USD cost for a given token count, model, and direction
+// string ("input", "output", or "cached"). Unknown directions are treated as input.
+func EstimateCost(tokens int, model string, direction string) float64 {
+	var dir Direction
+	switch strings.ToLower(direction) {
+	case "output":
+		dir = Output
+	case "cached":
+		dir = Cached
+	default:
+		dir = Input
+	}
+	return Cost(tokens, model, dir)
+}
+
 // KnownModels returns the list of supported model names.
 func KnownModels() []string {
 	models := make([]string, 0, len(PricingTable))
