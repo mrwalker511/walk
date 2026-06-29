@@ -1,0 +1,135 @@
+package session
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func openTestDB(t *testing.T) *DB {
+	t.Helper()
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"), filepath.Join(dir, "audit.log"))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+	return db
+}
+
+func TestStartEndSession(t *testing.T) {
+	db := openTestDB(t)
+
+	id, err := db.StartSession("claude-sonnet-4-5", "test")
+	require.NoError(t, err)
+	assert.Greater(t, id, int64(0))
+
+	err = db.EndSession(id, 1000, 250, 100, 0.0035)
+	require.NoError(t, err)
+
+	rec, err := db.GetSession(id)
+	require.NoError(t, err)
+	assert.Equal(t, id, rec.ID)
+	assert.Equal(t, "claude-sonnet-4-5", rec.Model)
+	assert.Equal(t, int64(1000), rec.TokensIn)
+	assert.Equal(t, int64(250), rec.TokensOut)
+	assert.Equal(t, int64(100), rec.TokensCached)
+	assert.InDelta(t, 0.0035, rec.CostUSD, 0.0001)
+	assert.NotNil(t, rec.EndedAt)
+}
+
+func TestGetLastSession(t *testing.T) {
+	db := openTestDB(t)
+
+	id1, err := db.StartSession("gpt-4o", "first")
+	require.NoError(t, err)
+	require.NoError(t, db.EndSession(id1, 100, 25, 0, 0.001))
+
+	time.Sleep(10 * time.Millisecond)
+
+	id2, err := db.StartSession("claude-sonnet-4-5", "second")
+	require.NoError(t, err)
+	require.NoError(t, db.EndSession(id2, 500, 125, 0, 0.002))
+
+	last, err := db.GetLastSession()
+	require.NoError(t, err)
+	assert.Equal(t, id2, last.ID)
+	assert.Equal(t, "second", last.Tag)
+}
+
+func TestListSessions(t *testing.T) {
+	db := openTestDB(t)
+
+	for i := 0; i < 3; i++ {
+		id, err := db.StartSession("gpt-4o", "")
+		require.NoError(t, err)
+		require.NoError(t, db.EndSession(id, 100, 25, 0, 0.001))
+	}
+
+	records, err := db.ListSessions()
+	require.NoError(t, err)
+	assert.Len(t, records, 3)
+}
+
+func TestTodaySpend(t *testing.T) {
+	db := openTestDB(t)
+
+	// No sessions yet
+	spend, err := db.TodaySpend()
+	require.NoError(t, err)
+	assert.Equal(t, 0.0, spend.CostUSD)
+
+	// Add a session
+	id, err := db.StartSession("claude-sonnet-4-5", "")
+	require.NoError(t, err)
+	require.NoError(t, db.EndSession(id, 1000, 250, 0, 0.006))
+
+	spend, err = db.TodaySpend()
+	require.NoError(t, err)
+	assert.InDelta(t, 0.006, spend.CostUSD, 0.0001)
+	assert.Equal(t, int64(1250), spend.TokensTotal)
+}
+
+func TestResetDailySpend(t *testing.T) {
+	db := openTestDB(t)
+
+	id, err := db.StartSession("claude-sonnet-4-5", "")
+	require.NoError(t, err)
+	require.NoError(t, db.EndSession(id, 1000, 250, 0, 0.006))
+
+	require.NoError(t, db.ResetDailySpend())
+
+	spend, err := db.TodaySpend()
+	require.NoError(t, err)
+	assert.Equal(t, 0.0, spend.CostUSD)
+}
+
+func TestAuditLog(t *testing.T) {
+	dir := t.TempDir()
+	auditPath := filepath.Join(dir, "audit.log")
+	db, err := Open(filepath.Join(dir, "test.db"), auditPath)
+	require.NoError(t, err)
+	defer db.Close()
+
+	err = db.AuditLog("sensitive payload content")
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(auditPath)
+	require.NoError(t, err)
+
+	// Should contain a SHA-256 hash, not the plaintext
+	assert.Contains(t, string(content), "sha256=")
+	assert.NotContains(t, string(content), "sensitive payload content")
+}
+
+func TestAuditLogNoPath(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"), "")
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Should not error when audit log path is empty
+	assert.NoError(t, db.AuditLog("test payload"))
+}

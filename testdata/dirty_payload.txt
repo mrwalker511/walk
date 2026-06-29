@@ -1,0 +1,28 @@
+This is a test payload containing fake secrets for scrubber testing.
+
+FAKE API KEYS (not real):
+sk-fake123ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890abcdef
+ANTHROPIC_KEY=ant-fake-v1-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdefghij
+
+FAKE AWS CREDENTIALS (not real):
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+FAKE JWT (not real, malformed):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkZha2VVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+FAKE PII (not real):
+Email: test.user@example-fake.com
+SSN: 123-45-6789
+Phone: 555-867-5309
+
+FAKE SSH KEY (not real):
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEA0000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000
+-----END RSA PRIVATE KEY-----
+
+Normal content that should not be redacted:
+- This is a regular sentence about software engineering
+- Go is a statically typed language developed at Google
+- The application handles 50,000 requests per minute
