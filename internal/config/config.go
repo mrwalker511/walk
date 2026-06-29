@@ -144,7 +144,18 @@ func LoadFrom(dir string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("parsing config: %w", err)
 	}
+	ExpandVars(&cfg)
 	return &cfg, nil
+}
+
+// ExpandVars resolves ${VAR_NAME} references in string fields using the environment.
+func ExpandVars(cfg *Config) {
+	cfg.Providers.Anthropic.APIKey = expand(cfg.Providers.Anthropic.APIKey)
+	cfg.Providers.OpenAI.APIKey = expand(cfg.Providers.OpenAI.APIKey)
+}
+
+func expand(s string) string {
+	return os.Expand(s, os.Getenv)
 }
 
 // EnsureDir creates ~/.walk/ if it doesn't exist.

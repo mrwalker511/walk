@@ -102,6 +102,34 @@ func TestWrite(t *testing.T) {
 	assert.Equal(t, 7.50, loaded.Budget.DailyLimit)
 }
 
+func TestExpandVars(t *testing.T) {
+	t.Setenv("WALK_TEST_KEY", "sk-real-value")
+
+	cfg := &Config{}
+	cfg.Providers.Anthropic.APIKey = "${WALK_TEST_KEY}"
+	cfg.Providers.OpenAI.APIKey = "${UNSET_VAR}"
+
+	ExpandVars(cfg)
+
+	assert.Equal(t, "sk-real-value", cfg.Providers.Anthropic.APIKey)
+	assert.Equal(t, "", cfg.Providers.OpenAI.APIKey)
+}
+
+func TestLoadFromExpandsVars(t *testing.T) {
+	t.Setenv("WALK_TEST_ANTHROPIC", "sk-expanded")
+	dir := t.TempDir()
+	yamlContent := `providers:
+  anthropic:
+    api_key: "${WALK_TEST_ANTHROPIC}"
+`
+	err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(yamlContent), 0600)
+	require.NoError(t, err)
+
+	cfg, err := LoadFrom(dir)
+	require.NoError(t, err)
+	assert.Equal(t, "sk-expanded", cfg.Providers.Anthropic.APIKey)
+}
+
 func TestEnsureDir(t *testing.T) {
 	orig := DefaultConfigDir
 	defer func() { DefaultConfigDir = orig }()
