@@ -126,3 +126,46 @@ func TestScrubEntropyThreshold(t *testing.T) {
 
 	assert.True(t, result.HasSecrets)
 }
+
+func TestScrubAnthropicKey(t *testing.T) {
+	// ant[A-Za-z0-9_-]{30,} pattern — Anthropic-style key
+	text := "key: antABCDEFGHIJKLMNOPQRSTUVWXYZabcd"
+	result := Scrub(text, 0)
+
+	require.True(t, result.HasSecrets)
+	require.Len(t, result.Findings, 1)
+	assert.Equal(t, TypeAPIKey, result.Findings[0].Type)
+	assert.NotContains(t, result.Clean, "antABCDEFGHIJKLMNOPQRSTUVWXYZabcd")
+	assert.Contains(t, result.Clean, "[REDACTED:API_KEY]")
+}
+
+func TestScrubEntropyFindingType(t *testing.T) {
+	// Verify that a high-entropy word produces a TypeHighEntropy finding
+	highEntropy := "aB3kQ9mNpR2xZvLwYcDeFgHiJk"
+	text := "token=" + highEntropy
+	result := Scrub(text, 3.0)
+
+	require.True(t, result.HasSecrets)
+	types := make([]FindingType, 0, len(result.Findings))
+	for _, f := range result.Findings {
+		types = append(types, f.Type)
+	}
+	assert.Contains(t, types, TypeHighEntropy)
+}
+
+func TestScrubEntropyThresholdFallback(t *testing.T) {
+	// entropyThreshold <= 0 should default to 4.5 — normal short words must not trigger it
+	result := Scrub("hello world this is normal text", 0)
+	assert.False(t, result.HasSecrets)
+	assert.Empty(t, result.Findings)
+}
+
+func TestScrubRedactedField(t *testing.T) {
+	// Finding.Redacted must hold the replacement string that appears in Clean
+	result := Scrub("key: sk-abcdefghijklmnopqrstuvwxyz012345", 0)
+
+	require.True(t, result.HasSecrets)
+	require.NotEmpty(t, result.Findings)
+	assert.NotEmpty(t, result.Findings[0].Redacted)
+	assert.Contains(t, result.Clean, result.Findings[0].Redacted)
+}
