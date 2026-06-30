@@ -112,7 +112,9 @@ func runWatch(cmd *cobra.Command, args []string) error {
 					"timestamp":     now.Format(time.RFC3339),
 				}
 				enc := json.NewEncoder(os.Stdout)
-				enc.Encode(out)
+				if err := enc.Encode(out); err != nil {
+					return err
+				}
 			} else if !quiet {
 				fmt.Printf("\r[%s] spend: $%.4f / $%.2f (%.1f%%) | tokens: %s",
 					now.Format("15:04:05"),
