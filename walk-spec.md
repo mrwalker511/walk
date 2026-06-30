@@ -26,7 +26,7 @@ full visibility and control over token spend without sacrificing output quality.
 | Property        | Value                                        |
 | --------------- | -------------------------------------------- |
 | Binary name     | `walk`                                       |
-| Language        | Go 1.22+                                     |
+| Language        | Go 1.25.0 (pinned by modernc.org/sqlite)     |
 | CLI framework   | cobra + viper                                |
 | Config location | `~/.walk/config.yaml`                        |
 | DB              | SQLite (`~/.walk/sessions.db`)               |

@@ -4,6 +4,18 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 4 — 2026-06-30
+
+**PRs: #10**
+
+Added two documentation files to the repo root.
+
+`CLAUDE.md` is a lean agent context file that Claude Code loads automatically at the start of each session. It holds the package map, hard constraints (env-var-only API keys, SHA-256-only audit log), errcheck conventions, current implementation status, and a pointer to the backlog. The goal is to prevent agents from re-deriving the same conventions each session and avoid bloating context with the full spec on every turn.
+
+`DEVLOG.md` (this file) is a plain-English record of what happened in each development session — what was built, why each decision was made, and what changed. It also carries the Future Scope backlog so there is always one authoritative place to see what's left without opening the spec.
+
+---
+
 ## Session 3 — 2026-06-30
 
 **PRs: #8**
