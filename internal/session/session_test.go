@@ -17,7 +17,7 @@ func openTestDB(t *testing.T) *DB {
 	dir := t.TempDir()
 	db, err := Open(filepath.Join(dir, "test.db"), filepath.Join(dir, "audit.log"))
 	require.NoError(t, err)
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
 
@@ -113,7 +113,7 @@ func TestAuditLog(t *testing.T) {
 	auditPath := filepath.Join(dir, "audit.log")
 	db, err := Open(filepath.Join(dir, "test.db"), auditPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err = db.AuditLog("sensitive payload content")
 	require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestAuditLogNoPath(t *testing.T) {
 	dir := t.TempDir()
 	db, err := Open(filepath.Join(dir, "test.db"), "")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Should not error when audit log path is empty
 	assert.NoError(t, db.AuditLog("test payload"))

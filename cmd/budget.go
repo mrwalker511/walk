@@ -50,7 +50,7 @@ func runBudget(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("opening session db: %w (hint: run 'walk init' first)", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Default to --status if no flag given
 	if !budgetReset && budgetSet == "" {

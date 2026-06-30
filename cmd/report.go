@@ -48,7 +48,7 @@ func runReport(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("opening session db: %w (hint: run 'walk init' first)", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	format := reportFormat
 	if format == "" && globalCfg != nil {
