@@ -113,7 +113,7 @@ func (d *DB) EndSession(id, tokensIn, tokensOut, tokensCached int64, costUSD flo
 		ON CONFLICT(date) DO UPDATE SET
 			cost_usd = cost_usd + excluded.cost_usd,
 			tokens_total = tokens_total + excluded.tokens_total
-	`, date, costUSD, tokensIn+tokensOut)
+	`, date, costUSD, tokensIn+tokensOut+tokensCached)
 	return err
 }
 
@@ -143,7 +143,7 @@ func (d *DB) ListSessions() ([]SessionRecord, error) {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var records []SessionRecord
+	records := make([]SessionRecord, 0)
 	for rows.Next() {
 		rec, err := scanSession(rows)
 		if err != nil {

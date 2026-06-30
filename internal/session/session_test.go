@@ -1,6 +1,8 @@
 package session
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -122,6 +124,44 @@ func TestAuditLog(t *testing.T) {
 	// Should contain a SHA-256 hash, not the plaintext
 	assert.Contains(t, string(content), "sha256=")
 	assert.NotContains(t, string(content), "sensitive payload content")
+}
+
+func TestTodaySpendIncludesCached(t *testing.T) {
+	db := openTestDB(t)
+	id, err := db.StartSession("claude-sonnet-4-5", "")
+	require.NoError(t, err)
+	// 500 in, 100 out, 200 cached — total should be 800
+	require.NoError(t, db.EndSession(id, 500, 100, 200, 0.003))
+
+	spend, err := db.TodaySpend()
+	require.NoError(t, err)
+	assert.Equal(t, int64(800), spend.TokensTotal)
+}
+
+func TestListSessionsEmpty(t *testing.T) {
+	db := openTestDB(t)
+	records, err := db.ListSessions()
+	require.NoError(t, err)
+	assert.NotNil(t, records)
+	assert.Len(t, records, 0)
+}
+
+func TestAuditLogHashValue(t *testing.T) {
+	dir := t.TempDir()
+	auditPath := filepath.Join(dir, "audit.log")
+	db, err := Open(filepath.Join(dir, "test.db"), auditPath)
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	payload := "test payload for hash verification"
+	require.NoError(t, db.AuditLog(payload))
+
+	content, err := os.ReadFile(auditPath)
+	require.NoError(t, err)
+
+	expected := fmt.Sprintf("%x", sha256.Sum256([]byte(payload)))
+	assert.Contains(t, string(content), "sha256="+expected)
+	assert.NotContains(t, string(content), payload)
 }
 
 func TestAuditLogNoPath(t *testing.T) {
