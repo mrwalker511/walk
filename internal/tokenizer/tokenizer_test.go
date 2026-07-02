@@ -52,8 +52,8 @@ func TestCost(t *testing.T) {
 		{"claude input 1M", 1_000_000, "claude-sonnet-4-5", Input, 3.00},
 		{"claude output 1M", 1_000_000, "claude-sonnet-4-5", Output, 15.00},
 		{"claude cached 1M", 1_000_000, "claude-sonnet-4-5", Cached, 0.30},
-		{"gpt4o input 1M", 1_000_000, "gpt-4o", Input, 2.50},
-		{"gpt4o-mini input 1M", 1_000_000, "gpt-4o-mini", Input, 0.15},
+		{"gpt4o input 1M (placeholder)", 1_000_000, "gpt-4o", Input, 0.00},
+		{"gpt4o-mini input 1M (placeholder)", 1_000_000, "gpt-4o-mini", Input, 0.00},
 		{"llama free", 1_000_000, "llama.cpp", Input, 0.00},
 		{"unknown model", 1_000_000, "unknown-model", Input, 0.00},
 		{"zero tokens", 0, "claude-sonnet-4-5", Input, 0.00},
@@ -130,17 +130,17 @@ func TestEstimateCost(t *testing.T) {
 		{"claude input", 1_000_000, "claude-sonnet-4-5", "input", 3.00},
 		{"claude output", 1_000_000, "claude-sonnet-4-5", "output", 15.00},
 		{"claude cached", 1_000_000, "claude-sonnet-4-5", "cached", 0.30},
-		{"gpt4o input", 1_000_000, "gpt-4o", "input", 2.50},
-		{"gpt4o output", 1_000_000, "gpt-4o", "output", 10.00},
-		{"gpt4o cached", 1_000_000, "gpt-4o", "cached", 1.25},
-		{"gpt4o-mini input", 1_000_000, "gpt-4o-mini", "input", 0.15},
-		{"gpt4o-mini output", 1_000_000, "gpt-4o-mini", "output", 0.60},
-		{"gemini input", 1_000_000, "gemini-2.5-flash", "input", 0.075},
-		{"gemini output", 1_000_000, "gemini-2.5-flash", "output", 0.30},
+		{"gpt4o input (placeholder)", 1_000_000, "gpt-4o", "input", 0.00},
+		{"gpt4o output (placeholder)", 1_000_000, "gpt-4o", "output", 0.00},
+		{"gpt4o cached (placeholder)", 1_000_000, "gpt-4o", "cached", 0.00},
+		{"gpt4o-mini input (placeholder)", 1_000_000, "gpt-4o-mini", "input", 0.00},
+		{"gpt4o-mini output (placeholder)", 1_000_000, "gpt-4o-mini", "output", 0.00},
+		{"gemini input (placeholder)", 1_000_000, "gemini-2.5-flash", "input", 0.00},
+		{"gemini output (placeholder)", 1_000_000, "gemini-2.5-flash", "output", 0.00},
 		{"llama free", 1_000_000, "llama.cpp", "input", 0.00},
 		{"unknown model", 1_000_000, "unknown-x", "input", 0.00},
-		{"unknown direction defaults to input", 1_000_000, "gpt-4o", "inbound", 2.50},
-		{"case insensitive Output", 1_000_000, "gpt-4o", "Output", 10.00},
+		{"unknown direction defaults to input", 1_000_000, "claude-sonnet-4-5", "inbound", 3.00},
+		{"case insensitive Output", 1_000_000, "claude-sonnet-4-5", "Output", 15.00},
 		{"zero tokens", 0, "claude-sonnet-4-5", "input", 0.00},
 	}
 	for _, tt := range tests {
@@ -159,7 +159,11 @@ func TestIsCodeHeavy(t *testing.T) {
 
 func TestKnownModels(t *testing.T) {
 	models := KnownModels()
-	assert.Len(t, models, 6)
+	assert.GreaterOrEqual(t, len(models), 6)
+	assert.True(t, IsKnownModel("claude-sonnet-5"))
+	assert.True(t, IsKnownModel("claude-haiku-4-5"))
+	assert.True(t, IsKnownModel("claude-sonnet-4-5"))
+	assert.True(t, IsKnownModel("llama.cpp"))
 }
 
 func BenchmarkCount(b *testing.B) {

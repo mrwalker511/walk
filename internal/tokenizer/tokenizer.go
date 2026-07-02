@@ -24,13 +24,28 @@ type ModelPricing struct {
 }
 
 // PricingTable is the canonical model pricing from the spec.
+// TODO: verify all prices against official provider pages before release.
+//   Anthropic: https://www.anthropic.com/pricing
+//   OpenAI:    https://openai.com/pricing
+//   Google:    https://ai.google.dev/pricing
+// Entries marked 0.000 are placeholders — prices unconfirmed for current models.
+// Legacy entries (sonnet-4-5, haiku-3-5) are kept for existing session log compatibility.
 var PricingTable = map[string]ModelPricing{
+	// Current generation — prices unverified, update before release
+	"claude-sonnet-5": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	"claude-haiku-4-5": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	"claude-opus-4-8":  {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	"claude-fable-5":   {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	// Legacy — kept for session log backwards compatibility
 	"claude-sonnet-4-5": {InputPer1M: 3.00, OutputPer1M: 15.00, CachedPer1M: 0.30},
 	"claude-haiku-3-5":  {InputPer1M: 0.80, OutputPer1M: 4.00, CachedPer1M: 0.08},
-	"gpt-4o":            {InputPer1M: 2.50, OutputPer1M: 10.00, CachedPer1M: 1.25},
-	"gpt-4o-mini":       {InputPer1M: 0.15, OutputPer1M: 0.60, CachedPer1M: 0.075},
-	"gemini-2.5-flash":  {InputPer1M: 0.075, OutputPer1M: 0.30, CachedPer1M: 0},
-	"llama.cpp":         {InputPer1M: 0, OutputPer1M: 0, CachedPer1M: 0},
+	// OpenAI — verify current model IDs and prices
+	"gpt-4o":      {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	"gpt-4o-mini": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	// Google — verify current model IDs and prices
+	"gemini-2.5-flash": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0},
+	// Local — always free
+	"llama.cpp": {InputPer1M: 0, OutputPer1M: 0, CachedPer1M: 0},
 }
 
 // Count estimates the token count for text using a character-based approximation.
