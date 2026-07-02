@@ -64,13 +64,17 @@ Run `walk init` to create `~/.walk/config.yaml`. See [`walk-spec.md`](walk-spec.
 
 ## Supported Models
 
+> Prices marked `$X.XX` are placeholders — verify at [anthropic.com/pricing](https://www.anthropic.com/pricing), [openai.com/pricing](https://openai.com/pricing), and [ai.google.dev/pricing](https://ai.google.dev/pricing) before use.
+
 | Model | Input/1M | Output/1M | Cached/1M |
 |---|---|---|---|
-| claude-sonnet-4-5 | $3.00 | $15.00 | $0.30 |
-| claude-haiku-3-5 | $0.80 | $4.00 | $0.08 |
-| gpt-4o | $2.50 | $10.00 | $1.25 |
-| gpt-4o-mini | $0.15 | $0.60 | $0.075 |
-| gemini-2.5-flash | $0.075 | $0.30 | — |
+| claude-sonnet-5 | $X.XX | $X.XX | $X.XX |
+| claude-haiku-4-5 | $X.XX | $X.XX | $X.XX |
+| claude-opus-4-8 | $X.XX | $X.XX | $X.XX |
+| claude-fable-5 | $X.XX | $X.XX | $X.XX |
+| gpt-4o | $X.XX | $X.XX | $X.XX |
+| gpt-4o-mini | $X.XX | $X.XX | $X.XX |
+| gemini-2.5-flash | $X.XX | $X.XX | — |
 | llama.cpp (local) | $0.00 | $0.00 | — |
 
 ## Development
