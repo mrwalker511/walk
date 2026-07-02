@@ -116,3 +116,84 @@ func TestAnalyzeUnknownModel(t *testing.T) {
 	assert.Equal(t, 0.0, report.InputCost)
 	assert.Equal(t, 0.0, report.OutputCost)
 }
+
+func TestAnalyzeCleanText(t *testing.T) {
+	// Short, clean text should produce no warnings, no secrets, no compression hint.
+	text := "This is a short clean prompt."
+	report := Analyze(text, "claude-sonnet-4-5", 100)
+	assert.Empty(t, report.Warnings)
+	assert.False(t, report.HasSecrets)
+	assert.Empty(t, report.CompressionHint)
+}
+
+func TestAnalyzeLongLineBoundary(t *testing.T) {
+	// detectLongLines uses > 500, so exactly 500 must not warn but 501 must.
+	exactly500 := strings.Repeat("x", 500)
+	for _, w := range Analyze(exactly500, "claude-sonnet-4-5", 100).Warnings {
+		assert.NotEqual(t, "LONG_LINE", w.Code, "500 chars should not trigger LONG_LINE")
+	}
+
+	hasLong := false
+	for _, w := range Analyze(strings.Repeat("x", 501), "claude-sonnet-4-5", 100).Warnings {
+		if w.Code == "LONG_LINE" {
+			hasLong = true
+			assert.Equal(t, SeverityInfo, w.Severity)
+			assert.Contains(t, w.Hint, "summarising")
+		}
+	}
+	assert.True(t, hasLong, "501 chars should trigger LONG_LINE")
+}
+
+func TestAnalyzeRepetitionShortChunksIgnored(t *testing.T) {
+	// Each 5-line window has fewer than 10 words, so detectRepetition must skip it.
+	shortBlock := "a\nb\nc\nd\ne\n"
+	text := shortBlock + shortBlock
+	for _, w := range Analyze(text, "claude-sonnet-4-5", 100).Warnings {
+		assert.NotEqual(t, "DUPLICATE_BLOCK", w.Code, "trivially short repeated chunks should not warn")
+	}
+}
+
+func TestAnalyzeTotalCostIsSum(t *testing.T) {
+	text := strings.Repeat("word ", 800)
+	r := Analyze(text, "claude-sonnet-4-5", 100)
+	assert.InDelta(t, r.InputCost+r.OutputCost, r.TotalCost, 1e-9)
+}
+
+func TestAnalyzeNoRepetitionFewLines(t *testing.T) {
+	// Fewer than windowSize (5) lines must not produce DUPLICATE_BLOCK and must not panic.
+	text := "Line one\nLine two\nLine three"
+	for _, w := range Analyze(text, "claude-sonnet-4-5", 100).Warnings {
+		assert.NotEqual(t, "DUPLICATE_BLOCK", w.Code)
+	}
+}
+
+func TestAnalyzeWarningSeverities(t *testing.T) {
+	// CONTEXT_FILL must be SeverityWarning with a "walk compress" hint.
+	line := strings.Repeat("word ", 100)
+	bigText := strings.Repeat(line+"\n", 700)
+	for _, w := range Analyze(bigText, "claude-sonnet-4-5", 100).Warnings {
+		if w.Code == "CONTEXT_FILL" {
+			assert.Equal(t, SeverityWarning, w.Severity)
+			assert.Contains(t, w.Hint, "walk compress")
+		}
+	}
+
+	// SECRET_* warnings must be SeverityError with a "walk scrub" hint.
+	secretText := "API key: sk-testABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	for _, w := range Analyze(secretText, "claude-sonnet-4-5", 100).Warnings {
+		if strings.HasPrefix(w.Code, "SECRET_") {
+			assert.Equal(t, SeverityError, w.Severity)
+			assert.Contains(t, w.Hint, "walk scrub")
+		}
+	}
+
+	// DUPLICATE_BLOCK must be SeverityWarning.
+	block := "You are a helpful assistant.\nPlease be concise.\nDo not make up facts.\nAlways cite sources.\nBe professional.\n"
+	dupText := block + "\nFiller content here.\n" + block
+	for _, w := range Analyze(dupText, "claude-sonnet-4-5", 100).Warnings {
+		if w.Code == "DUPLICATE_BLOCK" {
+			assert.Equal(t, SeverityWarning, w.Severity)
+			assert.Contains(t, w.Hint, "tokens")
+		}
+	}
+}
