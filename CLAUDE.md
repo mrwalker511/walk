@@ -49,6 +49,8 @@ See `DEVLOG.md` for full history. Short version:
 | `internal/scrubber` — extra test cases | ✅ done (PR #7) |
 | `internal/session` — tokensCached bug + 3 tests | ✅ done (PR #8) |
 | `CLAUDE.md` + `DEVLOG.md` — agent context + session log | ✅ done (PR #10) |
+| doc sync + Go version fix in walk-spec.md | ✅ done (PR #11) |
+| tokenizer: current Claude models + pricing placeholders | ✅ done (PR #12) |
 | `internal/analyzer` — coverage gaps | pending |
 | `internal/cache` — coverage gaps | pending |
 | `docs/` — all doc files | pending |
