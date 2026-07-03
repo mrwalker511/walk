@@ -4,6 +4,20 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 6 — 2026-07-03
+
+**PRs: #13**
+
+One combined PR covering a doc sync and test coverage improvements for two packages.
+
+The doc sync piece added the Session 5 entry to DEVLOG.md and updated CLAUDE.md with status rows for PRs #11 and #12 — same housekeeping pattern as previous sessions.
+
+`internal/analyzer` gained six new tests. `TestAnalyzeCleanText` establishes a no-warnings baseline for short clean input. `TestAnalyzeLongLineBoundary` pins the `> 500` boundary condition — exactly 500 chars must not warn, 501 must. `TestAnalyzeRepetitionShortChunksIgnored` verifies that `detectRepetition` skips windows with fewer than 10 words, which is the intended behaviour for trivially short repeated blocks. `TestAnalyzeTotalCostIsSum` asserts the `TotalCost == InputCost + OutputCost` invariant. `TestAnalyzeNoRepetitionFewLines` checks that text shorter than the 5-line window size doesn't panic and doesn't produce a false `DUPLICATE_BLOCK` warning. `TestAnalyzeWarningSeverities` verifies the `Severity` and `Hint` fields for all three warning codes: `LONG_LINE` (info), `DUPLICATE_BLOCK` (warning), and `SECRET_*` (error).
+
+`internal/cache` gained six new tests mirroring the same audit pattern. `TestAnalyzeNoReorderNeeded` verifies that correct stable-before-dynamic ordering produces `ReorderRecommended = false`. `TestAnalyzeEmptyText` confirms empty input doesn't panic and returns all-zero fields. `TestAnalyzeAllStable` checks that purely stable content sets `DynamicTokens = 0`. `TestAnalyzeZeroSavingsNoStableTokens` confirms both savings figures are zero when there are no stable tokens. `TestAnalyzeDynamicHeavyRecommendation` exercises the third recommendation branch (`dynamicToks > stableToks`). `TestAnalyzeSavingsFormula` verifies the per-1M rates hardcoded in `Analyze`: Anthropic `(3.00 − 0.30) / 1_000_000` and OpenAI `(2.50 − 1.25) / 1_000_000`.
+
+---
+
 ## Session 5 — 2026-07-01 / 2026-07-02
 
 **PRs: #11, #12**

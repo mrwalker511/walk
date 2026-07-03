@@ -51,8 +51,8 @@ See `DEVLOG.md` for full history. Short version:
 | `CLAUDE.md` + `DEVLOG.md` — agent context + session log | ✅ done (PR #10) |
 | doc sync + Go version fix in walk-spec.md | ✅ done (PR #11) |
 | tokenizer: current Claude models + pricing placeholders | ✅ done (PR #12) |
-| `internal/analyzer` — coverage gaps | pending |
-| `internal/cache` — coverage gaps | pending |
+| `internal/analyzer` — coverage gaps | ✅ done (PR #13) |
+| `internal/cache` — coverage gaps | ✅ done (PR #13) |
 | `docs/` — all doc files | pending |
 | Integration tests (build tag `integration`) | pending |
 | Coverage ≥ 80% per package | pending |
