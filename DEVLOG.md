@@ -4,6 +4,18 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 5 — 2026-07-01 / 2026-07-02
+
+**PRs: #11, #12**
+
+Two housekeeping PRs to keep documentation and the tokenizer current.
+
+PR #11 was a doc sync pass: added the Session 4 entry to DEVLOG.md (the log was missing its own creation), added the PR #10 row to the CLAUDE.md status table, and fixed the Go version in walk-spec.md from `Go 1.22+` to `Go 1.25.0 (pinned by modernc.org/sqlite)` — the spec was written before the sqlite dependency locked the version and was never updated.
+
+PR #12 updated the tokenizer for the current Claude model generation. Added `claude-sonnet-5`, `claude-haiku-4-5`, `claude-opus-4-8`, and `claude-fable-5` to `PricingTable`. All new model prices (and the existing OpenAI/Google entries) were set to `0.000` placeholder pending verification from official pricing pages — a TODO comment at the top of `PricingTable` links directly to Anthropic, OpenAI, and Google pricing. Legacy entries (`claude-sonnet-4-5`, `claude-haiku-3-5`) were kept with their real historical prices for backwards compatibility with existing session log records. README.md and walk-spec.md pricing tables were updated to show `$X.XX` placeholders with links to the provider pricing pages. Tests for the now-zero-priced models were updated to expect `0.00`, and the direction-logic tests (case-insensitivity, unknown-direction fallback) were switched to use `claude-sonnet-4-5` so they remain meaningful. `TestKnownModels` now checks model membership rather than exact count so adding models in future doesn't require a test change.
+
+---
+
 ## Session 4 — 2026-06-30
 
 **PRs: #10**
