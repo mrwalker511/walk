@@ -54,7 +54,7 @@ See `DEVLOG.md` for full history. Short version:
 | `internal/analyzer` — coverage gaps | ✅ done (PR #13) |
 | `internal/cache` — coverage gaps | ✅ done (PR #13) |
 | `docs/` — all doc files | ✅ done (PR #14) |
-| Integration tests (build tag `integration`) | pending |
+| Integration tests (build tag `integration`) | ✅ done (PR #16) |
 | Coverage ≥ 80% per package | ✅ done (PR #15) |
 
 ## What's left (future scope)
