@@ -53,9 +53,9 @@ See `DEVLOG.md` for full history. Short version:
 | tokenizer: current Claude models + pricing placeholders | ✅ done (PR #12) |
 | `internal/analyzer` — coverage gaps | ✅ done (PR #13) |
 | `internal/cache` — coverage gaps | ✅ done (PR #13) |
-| `docs/` — all doc files | pending |
+| `docs/` — all doc files | ✅ done (PR #14) |
 | Integration tests (build tag `integration`) | pending |
-| Coverage ≥ 80% per package | pending |
+| Coverage ≥ 80% per package | ✅ done (PR #15) |
 
 ## What's left (future scope)
 

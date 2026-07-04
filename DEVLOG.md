@@ -4,6 +4,18 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 7 — 2026-07-03
+
+**PRs: #14, #15**
+
+Two PRs shipped back-to-back covering documentation and test coverage.
+
+PR #14 populated all nine previously-empty docs files. `docs/getting-started.md` covers prerequisites, installation via `go install`, the `walk init` walkthrough, and a first-commands sequence. `docs/configuration.md` is a field-by-field reference for `~/.walk/config.yaml` — every provider, budget, scrubber, session, and local-model key with type and default. `docs/commands.md` documents every subcommand including flags, output format, and exit codes. `docs/troubleshooting.md` covers seven common failure modes with concrete fixes. `docs/security.md` explains the API-key model (env-var references only), the dual-strategy scrubber (regex + Shannon entropy), the SHA-256-only audit log, offline mode, and the no-telemetry guarantee. The three example files (`docs/examples/claude-code.md`, `docs/examples/codex.md`, `docs/examples/llama-cpp.md`) provide end-to-end workflow walkthroughs for each integration scenario.
+
+PR #15 added `cmd/cmd_test.go` — the first test file for the `cmd/` package, which previously had 0% coverage. Thirty-six tests exercise: pure utility functions (`formatTokens`, `errorHint`, `contains`, `printSavings`), all six testable subcommand runners (`runAnalyze`, `runDiff`, `runScrub`, `runCacheAnalyze`, `runBudget`, `runReport`), JSON and CSV output paths, and stdin reading. A `captureStdout` helper using `os.Pipe()` intercepts output without touching `os.Stdout` globally; `resetGlobals()` zeroes all package-level cobra flag vars between tests to prevent state leakage. Final coverage: all `internal/` packages ≥ 80% (several at 100%); `cmd/` reached ~56%, with the remaining gap attributable entirely to server-dependent commands (`runCompress`, `loadDefaultConfig`), interactive-prompt commands (`runInit`, `prompt`, `checkLlamaHealth`), and an infinite-loop command (`runWatch`) — none of which are reachable in `-short` mode.
+
+---
+
 ## Session 6 — 2026-07-03
 
 **PRs: #13**
