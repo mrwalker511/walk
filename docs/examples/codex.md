@@ -64,7 +64,7 @@ walk monitors token burn rate and warns when you approach the budget cap.
 ## Post-session report
 
 ```bash
-walk report --session last --model gpt-4o
+walk report --session last
 ```
 
 ## Workflow summary
