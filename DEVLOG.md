@@ -4,6 +4,14 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 8 — 2026-07-04
+
+**PRs: #16**
+
+Added `internal/router/router_integration_test.go` under the `//go:build integration` build tag. The file follows the same pattern as `internal/compressor/compressor_integration_test.go` — both require a real llama.cpp server running at `localhost:8080` and are excluded from `go test ./... -short`. Two tests: `TestRouteIntegration` calls `Route(ctx, false)` and asserts the decision routes locally, and `TestCheckLocalHealthIntegration` calls `CheckLocalHealth` directly and asserts the server is reachable. The existing unit tests in `router_test.go` already exercise all routing logic via `httptest.Server` and `NewWithClient`; the integration test adds end-to-end coverage against a live server. All short tests remain green.
+
+---
+
 ## Session 7 — 2026-07-03
 
 **PRs: #14, #15**
