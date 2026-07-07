@@ -123,8 +123,7 @@ walk diff original.md optimized.md --json
 - Token count for each file
 - Delta (tokens saved / added) and percentage change
 - Cost delta at the active model's input pricing
-
-Note: `walk diff` reports numeric deltas only. It does not show inline text highlighting of removed content.
+- A unified diff (`=== Diff ===` section) highlighting removed and added lines — removed lines in red, added lines in green when `output.color` is enabled
 
 **JSON output (`--json`)**
 
@@ -136,7 +135,9 @@ Note: `walk diff` reports numeric deltas only. It does not show inline text high
   "token_delta": -900,
   "original_cost_usd": 0.003600,
   "optimized_cost_usd": 0.000900,
-  "cost_delta_usd": -0.002700
+  "cost_delta_usd": -0.002700,
+  "removed_lines": ["a line only present in the original"],
+  "added_lines": []
 }
 ```
 
@@ -221,9 +222,34 @@ walk report --json               # JSON output (overrides --format)
 
 **Format precedence:** `--json` global flag → `--format` flag → `output.default_format` in config → `table`.
 
+**Output**
+
+Each session row includes token counts, cost, and two derived cache metrics:
+- **cache hit ratio** — `tokens_cached / (tokens_in + tokens_cached)`
+- **cache savings** — what the cached tokens would have cost at the model's full input rate, minus what they actually cost at the cached rate
+
 **CSV columns**
 
-`id`, `model`, `tag`, `started_at`, `tokens_in`, `tokens_out`, `tokens_cached`, `cost_usd`
+`id`, `model`, `tag`, `started_at`, `tokens_in`, `tokens_out`, `tokens_cached`, `cost_usd`, `cache_hit_ratio`, `cache_savings_usd`
+
+**JSON output (`--json` / `--format json`)**
+
+```json
+[
+  {
+    "id": 42,
+    "started_at": "2026-07-06T15:04:05Z",
+    "model": "claude-sonnet-4-5",
+    "tag": "test",
+    "tokens_in": 1000,
+    "tokens_out": 250,
+    "tokens_cached": 100,
+    "cost_usd": 0.003,
+    "cache_hit_ratio": 0.0909,
+    "cache_savings_usd": 0.00027
+  }
+]
+```
 
 ---
 
@@ -318,7 +344,7 @@ Manage daily spend limits.
 ```bash
 walk budget                    # same as --status (default)
 walk budget --status           # show today's spend vs. cap
-walk budget --set 5.00         # set $5.00 daily cap (current session only)
+walk budget --set 5.00         # set $5.00 daily cap (persists to config.yaml)
 walk budget --reset            # reset today's counter to $0.00
 walk budget --status --json    # JSON output
 ```
@@ -333,7 +359,7 @@ walk budget --status --json    # JSON output
 | `--json` | Output as JSON |
 | `--dry-run` | Preview the change without applying it |
 
-> **Note:** `--set <amount>` updates the in-memory budget for the current process only. It does **not** write to `~/.walk/config.yaml`. To persist a new limit across sessions, edit `budget.daily_limit` in config directly.
+> **Note:** `--set <amount>` writes the new `budget.daily_limit` to `~/.walk/config.yaml` (or the directory given by `--config-dir`), so the cap persists across sessions. `--dry-run` still previews the change without writing.
 
 **JSON output (`--status --json`)**
 

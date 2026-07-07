@@ -40,16 +40,16 @@ type DB struct {
 
 // SessionRecord is a single session row.
 type SessionRecord struct {
-	ID           int64
-	StartedAt    time.Time
-	EndedAt      *time.Time
-	Model        string
-	Tag          string
-	TokensIn     int64
-	TokensOut    int64
-	TokensCached int64
-	CostUSD      float64
-	Notes        string
+	ID           int64      `json:"id"`
+	StartedAt    time.Time  `json:"started_at"`
+	EndedAt      *time.Time `json:"ended_at,omitempty"`
+	Model        string     `json:"model"`
+	Tag          string     `json:"tag"`
+	TokensIn     int64      `json:"tokens_in"`
+	TokensOut    int64      `json:"tokens_out"`
+	TokensCached int64      `json:"tokens_cached"`
+	CostUSD      float64    `json:"cost_usd"`
+	Notes        string     `json:"notes,omitempty"`
 }
 
 // DailySpend is the aggregate spend for a calendar day.

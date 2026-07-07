@@ -57,7 +57,11 @@ See `DEVLOG.md` for full history. Short version:
 | Integration tests (build tag `integration`) | ✅ done (PR #16) |
 | Coverage ≥ 80% per package | ✅ done (PR #15) |
 | Documentation completeness pass | ✅ done (PR #17) |
+| tokenizer: real pricing for all current-gen models | ✅ done (PR #18) |
+| `walk diff` — removed/added line highlighting | ✅ done (PR #18) |
+| `walk report` — cache hit ratio + savings baseline | ✅ done (PR #18) |
+| `walk budget --set` — persists to config.yaml | ✅ done (PR #18) |
 
 ## What's left (future scope)
 
-See the **Future Scope** section in `DEVLOG.md` for the ordered backlog.
+See the **Future Scope** section in `DEVLOG.md` for the ordered backlog. Two items remain, both deferred pending a design/infra decision: `walk watch` context-rot warnings and the Homebrew tap.

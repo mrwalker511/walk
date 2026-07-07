@@ -4,6 +4,24 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 10 — 2026-07-07
+
+**PRs: #18** (pending)
+
+Four items from the Future Scope backlog, all landed in one pass. Homebrew tap and `walk watch` context-rot/lost-in-middle warnings were explicitly deferred — the former needs a new `homebrew-tap` repo, the latter needs a design decision since `walk watch` only sees cumulative ledger totals, not live context-fill.
+
+**Pricing table refresh.** `internal/tokenizer.PricingTable` had 8 of 10 entries at `$0.000` placeholders. Fetched live pricing directly from `platform.claude.com/docs/en/about-claude/pricing`, `developers.openai.com/api/docs/models/{gpt-4o,gpt-4o-mini}`, and `ai.google.dev/gemini-api/docs/pricing`. All entries now have confirmed prices: `claude-sonnet-5` ($2.00/$10.00/$0.20 — introductory pricing through 2026-08-31, rising to $3.00/$15.00/$0.30 after), `claude-haiku-4-5` ($1.00/$5.00/$0.10), `claude-opus-4-8` ($5.00/$25.00/$0.50), `claude-fable-5` ($10.00/$50.00/$1.00 — turned out to have a published pricing page after all), `gpt-4o` ($2.50/$10.00/$1.25), `gpt-4o-mini` ($0.15/$0.60/$0.075), `gemini-2.5-flash` ($0.30/$2.50, no cached tier). Updated `tokenizer_test.go` cost-table assertions to match, and synced `README.md`/`walk-spec.md` pricing tables.
+
+**`walk diff` text highlighting.** Promoted `github.com/pmezard/go-difflib` from an unused indirect dependency to a direct one. `cmd/diff.go` now renders a unified diff (`=== Diff ===` section, red/green when `output.color` is enabled) after the existing numeric delta output, and `--json` gained `removed_lines`/`added_lines` fields. Removed the docs disclaimer that diff only reported numeric deltas.
+
+**`walk report` cache hit ratio + savings baseline.** Added `computeCacheMetrics` (`cache_hit_ratio = tokens_cached / (tokens_in + tokens_cached)`; savings = what the cached tokens would have cost at the model's full input rate minus what they actually cost at the cached rate, using `tokenizer.PricingTable`). Table gained `Hit%`/`Savings` columns, JSON now emits a `reportRow` wrapper with the two new fields, CSV gained two trailing columns. Added explicit `json` tags to `session.SessionRecord` (previously untagged, so JSON output used Go field names) — no other code depended on the untagged shape.
+
+**`walk budget --set` persistence.** `--set` now calls the existing `config.Write` (already used by `walk init`) after mutating `globalCfg.Budget.DailyLimit`, so the cap survives across processes. `--dry-run` still short-circuits before any mutation or write. Updated the docs note that previously said `--set` was in-memory only.
+
+All four verified manually end-to-end (diff highlighting on real files, report against a seeded session DB in table/json/csv, budget --set followed by a fresh-process --status) in addition to unit tests. `go build ./...`, `go test ./... -short`, and `make lint` all clean.
+
+---
+
 ## Session 9 — 2026-07-06
 
 **PRs: #17**
@@ -120,37 +138,10 @@ PR #4 added `CountTokens` and `EstimateCost` to `internal/tokenizer`. The lower-
 
 ## Future Scope
 
-Ordered by priority. Each item is a self-contained unit of work that follows the same pattern as the completed packages above: read the existing code, identify the gap, implement, test, verify clean build + lint, push.
+Each item is a self-contained unit of work that follows the same pattern as the completed packages above: read the existing code, identify the gap, implement, test, verify clean build + lint, push.
 
-### Next up
-
-**`internal/analyzer` — coverage and any gaps**
-The analyzer handles dead-weight detection and repetition fingerprinting. Check test coverage, add any missing table-driven tests, and look for bugs analogous to the tokensCached issue in session (e.g. any counters that silently drop data).
-
-**`internal/cache` — coverage and any gaps**
-The cache package handles prefix-cache analysis and reorder recommendations. Same pattern: audit the tests, fill gaps, fix any logic bugs.
-
-### Near-term
-
-**`docs/` directory — populate all doc files**
-The spec references six docs files (`getting-started.md`, `configuration.md`, `commands.md`, `troubleshooting.md`, `security.md`) and three example files (`claude-code.md`, `codex.md`, `llama-cpp.md`). All directories exist but all files are empty. Writing these now would prevent duplicated explanations across README and walk-spec.
-
-**Integration tests**
-`walk-spec.md` requires integration tests under the `//go:build integration` tag for packages that talk to llama.cpp or an API. `internal/compressor` and `internal/router` are the main candidates.
-
-**Coverage targets — ≥ 80% per package**
-Run `make coverage` to get a baseline. Any package below 80% needs targeted tests. `cmd/` packages have no tests at all and would benefit from integration-style tests using `cobra.Command.Execute()` with a test DB.
-
-### Later
-
-**Pricing table refresh**
-The tokenizer hardcodes pricing. As model prices change, there should be a way to update without a code change — perhaps a YAML pricing file in `~/.walk/` that overrides defaults.
-
-**`walk diff` token delta**
-The diff command exists but the token-delta highlighting (removed sections shown inline) may not be fully implemented. Worth verifying against the spec.
-
-**`walk watch` context rot alerts**
-The spec calls for staleness scoring and "lost in the middle" warnings when context exceeds 60% fill. Check whether the implementation covers this or if it's placeholder.
+**`walk watch` context rot / lost-in-middle warnings**
+The spec calls for staleness scoring and "lost in the middle" warnings when context exceeds 60% fill. `walk watch` currently only has visibility into cumulative spend/token totals polled from the session ledger — it doesn't see the live context payload — so this needs a design decision (e.g. a per-model context-window constant to compare cumulative tokens against) before implementation. Deferred in Session 10 pending that decision.
 
 **Homebrew tap**
-`.goreleaser.yaml` exists. Once the binary is stable, set up the Homebrew tap referenced in the README.
+`.goreleaser.yaml` has no `brews:` stanza. Shipping one requires a target tap repository (e.g. `mrwalker511/homebrew-tap`) that doesn't exist yet — deferred in Session 10 pending a decision on whether to create it.

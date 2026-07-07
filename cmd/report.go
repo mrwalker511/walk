@@ -7,8 +7,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/spf13/cobra"
 	"github.com/mrwalker511/walk/internal/session"
+	"github.com/mrwalker511/walk/internal/tokenizer"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -102,43 +103,73 @@ func runReport(cmd *cobra.Command, args []string) error {
 	}
 }
 
+// computeCacheMetrics returns the cache hit ratio and estimated savings (USD)
+// versus billing the cached tokens at the model's full input rate. Fails
+// open to zero for unknown models, consistent with tokenizer.Cost.
+func computeCacheMetrics(r session.SessionRecord) (ratio, savingsUSD float64) {
+	if denom := r.TokensIn + r.TokensCached; denom > 0 {
+		ratio = float64(r.TokensCached) / float64(denom)
+	}
+	if p, ok := tokenizer.PricingTable[r.Model]; ok {
+		savingsUSD = float64(r.TokensCached) * (p.InputPer1M - p.CachedPer1M) / 1_000_000
+	}
+	return ratio, savingsUSD
+}
+
+type reportRow struct {
+	session.SessionRecord
+	CacheHitRatio   float64 `json:"cache_hit_ratio"`
+	CacheSavingsUSD float64 `json:"cache_savings_usd"`
+}
+
 func printReportTable(records []session.SessionRecord) error {
-	fmt.Printf("%-6s %-12s %-20s %-10s %-10s %-10s %-10s\n",
-		"ID", "Model", "Started", "Tokens In", "Tokens Out", "Cached", "Cost")
-	fmt.Println(repeatStr("-", 90))
+	fmt.Printf("%-6s %-12s %-20s %-10s %-10s %-10s %-8s %-10s %-10s\n",
+		"ID", "Model", "Started", "Tokens In", "Tokens Out", "Cached", "Hit%", "Savings", "Cost")
+	fmt.Println(repeatStr("-", 100))
 	totalCost := 0.0
+	totalSavings := 0.0
 	for _, r := range records {
-		fmt.Printf("%-6d %-12s %-20s %-10s %-10s %-10s $%-9.4f\n",
+		ratio, savings := computeCacheMetrics(r)
+		fmt.Printf("%-6d %-12s %-20s %-10s %-10s %-10s %-8s %-10s $%-9.4f\n",
 			r.ID,
 			truncate(r.Model, 12),
 			r.StartedAt.Format("2006-01-02 15:04"),
 			formatTokens(int(r.TokensIn)),
 			formatTokens(int(r.TokensOut)),
 			formatTokens(int(r.TokensCached)),
+			fmt.Sprintf("%.1f%%", ratio*100),
+			tokenizer.FormatCost(savings),
 			r.CostUSD,
 		)
 		totalCost += r.CostUSD
+		totalSavings += savings
 	}
 	if len(records) > 1 {
-		fmt.Println(repeatStr("-", 90))
-		fmt.Printf("%-6s %-12s %-20s %-10s %-10s %-10s $%-9.4f\n",
-			"TOTAL", "", "", "", "", "", totalCost)
+		fmt.Println(repeatStr("-", 100))
+		fmt.Printf("%-6s %-12s %-20s %-10s %-10s %-10s %-8s %-10s $%-9.4f\n",
+			"TOTAL", "", "", "", "", "", "", tokenizer.FormatCost(totalSavings), totalCost)
 	}
 	return nil
 }
 
 func printReportJSON(records []session.SessionRecord) error {
+	rows := make([]reportRow, len(records))
+	for i, r := range records {
+		ratio, savings := computeCacheMetrics(r)
+		rows[i] = reportRow{SessionRecord: r, CacheHitRatio: ratio, CacheSavingsUSD: savings}
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	return enc.Encode(records)
+	return enc.Encode(rows)
 }
 
 func printReportCSV(records []session.SessionRecord) error {
 	w := csv.NewWriter(os.Stdout)
-	if err := w.Write([]string{"id", "model", "tag", "started_at", "tokens_in", "tokens_out", "tokens_cached", "cost_usd"}); err != nil {
+	if err := w.Write([]string{"id", "model", "tag", "started_at", "tokens_in", "tokens_out", "tokens_cached", "cost_usd", "cache_hit_ratio", "cache_savings_usd"}); err != nil {
 		return err
 	}
 	for _, r := range records {
+		ratio, savings := computeCacheMetrics(r)
 		if err := w.Write([]string{
 			strconv.FormatInt(r.ID, 10),
 			r.Model,
@@ -148,6 +179,8 @@ func printReportCSV(records []session.SessionRecord) error {
 			strconv.FormatInt(r.TokensOut, 10),
 			strconv.FormatInt(r.TokensCached, 10),
 			fmt.Sprintf("%.6f", r.CostUSD),
+			fmt.Sprintf("%.4f", ratio),
+			fmt.Sprintf("%.6f", savings),
 		}); err != nil {
 			return err
 		}

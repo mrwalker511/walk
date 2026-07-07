@@ -249,6 +249,51 @@ func TestRunDiffMissingFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestRunDiffHighlightsRemovedLines(t *testing.T) {
+	t.Cleanup(resetGlobals)
+	dir := t.TempDir()
+	orig := filepath.Join(dir, "original.txt")
+	opt := filepath.Join(dir, "optimized.txt")
+	require.NoError(t, os.WriteFile(orig, []byte("keep this line\nremove this line\n"), 0644))
+	require.NoError(t, os.WriteFile(opt, []byte("keep this line\n"), 0644))
+
+	out := captureStdout(t, func() {
+		assert.NoError(t, runDiff(nil, []string{orig, opt}))
+	})
+	assert.Contains(t, out, "=== Diff ===")
+	assert.Contains(t, out, "remove this line")
+}
+
+func TestRunDiffJSONIncludesRemovedLines(t *testing.T) {
+	t.Cleanup(resetGlobals)
+	dir := t.TempDir()
+	orig := filepath.Join(dir, "original.txt")
+	opt := filepath.Join(dir, "optimized.txt")
+	require.NoError(t, os.WriteFile(orig, []byte("keep this line\nremove this line\n"), 0644))
+	require.NoError(t, os.WriteFile(opt, []byte("keep this line\nadd this line\n"), 0644))
+	jsonOut = true
+
+	out := captureStdout(t, func() {
+		assert.NoError(t, runDiff(nil, []string{orig, opt}))
+	})
+	assert.Contains(t, out, "removed_lines")
+	assert.Contains(t, out, "remove this line")
+	assert.Contains(t, out, "added_lines")
+	assert.Contains(t, out, "add this line")
+}
+
+func TestRunDiffNoChangeNoHighlight(t *testing.T) {
+	t.Cleanup(resetGlobals)
+	dir := t.TempDir()
+	f := filepath.Join(dir, "same.txt")
+	require.NoError(t, os.WriteFile(f, []byte("identical content"), 0644))
+
+	out := captureStdout(t, func() {
+		assert.NoError(t, runDiff(nil, []string{f, f}))
+	})
+	assert.NotContains(t, out, "=== Diff ===")
+}
+
 // --- walk scrub ---
 
 func TestRunScrubClean(t *testing.T) {
@@ -419,6 +464,34 @@ func TestRunBudgetInvalidAmount(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid budget amount")
 }
 
+func TestRunBudgetSetPersists(t *testing.T) {
+	t.Cleanup(resetGlobals)
+	globalCfg = newTestConfig(t)
+	dir := t.TempDir()
+	cfgDir = dir
+	budgetSet = "7.50"
+
+	assert.NoError(t, runBudget(nil, []string{}))
+
+	persisted, err := config.LoadFrom(dir)
+	require.NoError(t, err)
+	assert.Equal(t, 7.50, persisted.Budget.DailyLimit)
+}
+
+func TestRunBudgetSetDryRunDoesNotPersist(t *testing.T) {
+	t.Cleanup(resetGlobals)
+	globalCfg = newTestConfig(t)
+	dir := t.TempDir()
+	cfgDir = dir
+	budgetSet = "9.00"
+	dryRun = true
+
+	assert.NoError(t, runBudget(nil, []string{}))
+
+	_, err := os.Stat(filepath.Join(dir, "config.yaml"))
+	assert.True(t, os.IsNotExist(err))
+}
+
 func TestExpandHome(t *testing.T) {
 	home, _ := os.UserHomeDir()
 	result := expandHome("~/foo/bar")
@@ -514,6 +587,8 @@ func TestRunReportJSON(t *testing.T) {
 		assert.NoError(t, runReport(nil, []string{}))
 	})
 	assert.Contains(t, out, "claude-sonnet-4-5")
+	assert.Contains(t, out, "cache_hit_ratio")
+	assert.Contains(t, out, "cache_savings_usd")
 	assert.True(t, strings.HasPrefix(strings.TrimSpace(out), "["))
 }
 
@@ -528,7 +603,47 @@ func TestRunReportCSV(t *testing.T) {
 		assert.NoError(t, runReport(nil, []string{}))
 	})
 	assert.Contains(t, out, "id,model,tag")
+	assert.Contains(t, out, "cache_hit_ratio,cache_savings_usd")
 	assert.Contains(t, out, "claude-sonnet-4-5")
+}
+
+func TestRunReportTableShowsCacheMetrics(t *testing.T) {
+	t.Cleanup(resetGlobals)
+	globalCfg = newTestConfig(t)
+	_ = newTestSession(t, globalCfg)
+	reportSession = "last"
+	reportFormat = "table"
+
+	out := captureStdout(t, func() {
+		assert.NoError(t, runReport(nil, []string{}))
+	})
+	assert.Contains(t, out, "Hit%")
+	assert.Contains(t, out, "Savings")
+	// newTestSession: tokens_in=1000, tokens_cached=100 -> hit ratio 100/1100 = 9.1%
+	assert.Contains(t, out, "9.1%")
+}
+
+func TestComputeCacheMetricsZeroDenominator(t *testing.T) {
+	ratio, savings := computeCacheMetrics(session.SessionRecord{Model: "claude-sonnet-4-5"})
+	assert.Equal(t, 0.0, ratio)
+	assert.Equal(t, 0.0, savings)
+}
+
+func TestComputeCacheMetricsUnknownModel(t *testing.T) {
+	ratio, savings := computeCacheMetrics(session.SessionRecord{
+		Model: "unknown-model", TokensIn: 1000, TokensCached: 100,
+	})
+	assert.InDelta(t, 100.0/1100.0, ratio, 0.0001)
+	assert.Equal(t, 0.0, savings)
+}
+
+func TestComputeCacheMetricsKnownModel(t *testing.T) {
+	ratio, savings := computeCacheMetrics(session.SessionRecord{
+		Model: "claude-sonnet-4-5", TokensIn: 900, TokensCached: 100,
+	})
+	assert.InDelta(t, 0.1, ratio, 0.0001)
+	// 100 tokens * (3.00 - 0.30) / 1_000_000
+	assert.InDelta(t, 100*(3.00-0.30)/1_000_000, savings, 1e-9)
 }
 
 func TestRunReportEmpty(t *testing.T) {

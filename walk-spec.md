@@ -249,18 +249,18 @@ output:
 
 ## Pricing Reference (used by tokenizer package)
 
-> Prices marked `$X.XX` are placeholders — verify before release.
-> Sources: [anthropic.com/pricing](https://www.anthropic.com/pricing) · [openai.com/pricing](https://openai.com/pricing) · [ai.google.dev/pricing](https://ai.google.dev/pricing)
+> Prices verified 2026-07-07. `claude-sonnet-5` uses introductory pricing in effect through 2026-08-31, rising to $3.00/$15.00/$0.30 on 2026-09-01.
+> Sources: [platform.claude.com/pricing](https://platform.claude.com/docs/en/about-claude/pricing) · [OpenAI model pages](https://developers.openai.com/api/docs/models/gpt-4o) · [ai.google.dev/pricing](https://ai.google.dev/gemini-api/docs/pricing)
 
 | Model             | Input (per 1M) | Output (per 1M) | Cached Input |
 | ----------------- | -------------- | --------------- | ------------ |
-| claude-sonnet-5   | $X.XX          | $X.XX           | $X.XX        |
-| claude-haiku-4-5  | $X.XX          | $X.XX           | $X.XX        |
-| claude-opus-4-8   | $X.XX          | $X.XX           | $X.XX        |
-| claude-fable-5    | $X.XX          | $X.XX           | $X.XX        |
-| gpt-4o            | $X.XX          | $X.XX           | $X.XX        |
-| gpt-4o-mini       | $X.XX          | $X.XX           | $X.XX        |
-| gemini-2.5-flash  | $X.XX          | $X.XX           | —            |
+| claude-sonnet-5   | $2.00          | $10.00          | $0.20        |
+| claude-haiku-4-5  | $1.00          | $5.00           | $0.10        |
+| claude-opus-4-8   | $5.00          | $25.00          | $0.50        |
+| claude-fable-5    | $10.00         | $50.00          | $1.00        |
+| gpt-4o            | $2.50          | $10.00          | $1.25        |
+| gpt-4o-mini       | $0.15          | $0.60           | $0.075       |
+| gemini-2.5-flash  | $0.30          | $2.50           | —            |
 | llama.cpp (local) | $0.00          | $0.00           | —            |
 | claude-sonnet-4-5 _(legacy)_ | $3.00 | $15.00   | $0.30        |
 | claude-haiku-3-5 _(legacy)_  | $0.80 | $4.00    | $0.08        |
