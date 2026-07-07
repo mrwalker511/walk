@@ -24,26 +24,29 @@ type ModelPricing struct {
 }
 
 // PricingTable is the canonical model pricing from the spec.
-// TODO: verify all prices against official provider pages before release.
-//   Anthropic: https://www.anthropic.com/pricing
-//   OpenAI:    https://openai.com/pricing
-//   Google:    https://ai.google.dev/pricing
-// Entries marked 0.000 are placeholders — prices unconfirmed for current models.
+// Verified against official provider pages 2026-07-07:
+//
+//	Anthropic: https://platform.claude.com/docs/en/about-claude/pricing
+//	OpenAI:    https://developers.openai.com/api/docs/models/gpt-4o (and /gpt-4o-mini)
+//	Google:    https://ai.google.dev/gemini-api/docs/pricing
+//
+// claude-sonnet-5 uses introductory pricing in effect through 2026-08-31; it
+// rises to $3.00/$15.00/$0.30 (matching claude-sonnet-4-5) on 2026-09-01.
 // Legacy entries (sonnet-4-5, haiku-3-5) are kept for existing session log compatibility.
 var PricingTable = map[string]ModelPricing{
-	// Current generation — prices unverified, update before release
-	"claude-sonnet-5": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
-	"claude-haiku-4-5": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
-	"claude-opus-4-8":  {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
-	"claude-fable-5":   {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
+	// Current generation
+	"claude-sonnet-5":  {InputPer1M: 2.00, OutputPer1M: 10.00, CachedPer1M: 0.20},
+	"claude-haiku-4-5": {InputPer1M: 1.00, OutputPer1M: 5.00, CachedPer1M: 0.10},
+	"claude-opus-4-8":  {InputPer1M: 5.00, OutputPer1M: 25.00, CachedPer1M: 0.50},
+	"claude-fable-5":   {InputPer1M: 10.00, OutputPer1M: 50.00, CachedPer1M: 1.00},
 	// Legacy — kept for session log backwards compatibility
 	"claude-sonnet-4-5": {InputPer1M: 3.00, OutputPer1M: 15.00, CachedPer1M: 0.30},
 	"claude-haiku-3-5":  {InputPer1M: 0.80, OutputPer1M: 4.00, CachedPer1M: 0.08},
-	// OpenAI — verify current model IDs and prices
-	"gpt-4o":      {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
-	"gpt-4o-mini": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0.000},
-	// Google — verify current model IDs and prices
-	"gemini-2.5-flash": {InputPer1M: 0.000, OutputPer1M: 0.000, CachedPer1M: 0},
+	// OpenAI
+	"gpt-4o":      {InputPer1M: 2.50, OutputPer1M: 10.00, CachedPer1M: 1.25},
+	"gpt-4o-mini": {InputPer1M: 0.15, OutputPer1M: 0.60, CachedPer1M: 0.075},
+	// Google — no published cached-input tier for this model
+	"gemini-2.5-flash": {InputPer1M: 0.30, OutputPer1M: 2.50, CachedPer1M: 0},
 	// Local — always free
 	"llama.cpp": {InputPer1M: 0, OutputPer1M: 0, CachedPer1M: 0},
 }

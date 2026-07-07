@@ -6,8 +6,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/spf13/cobra"
+	"github.com/mrwalker511/walk/internal/config"
 	"github.com/mrwalker511/walk/internal/session"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -68,6 +69,13 @@ func runBudget(cmd *cobra.Command, args []string) error {
 		}
 		if globalCfg != nil {
 			globalCfg.Budget.DailyLimit = limit
+			dir := cfgDir
+			if dir == "" {
+				dir = config.DefaultConfigDir()
+			}
+			if err := config.Write(dir, globalCfg); err != nil {
+				return fmt.Errorf("writing config: %w", err)
+			}
 		}
 		if !quiet {
 			fmt.Printf("✓ Daily budget set to $%.2f\n", limit)
