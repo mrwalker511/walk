@@ -56,6 +56,7 @@ See `DEVLOG.md` for full history. Short version:
 | `docs/` — all doc files | ✅ done (PR #14) |
 | Integration tests (build tag `integration`) | ✅ done (PR #16) |
 | Coverage ≥ 80% per package | ✅ done (PR #15) |
+| Documentation completeness pass | ✅ done (PR #17) |
 
 ## What's left (future scope)
 

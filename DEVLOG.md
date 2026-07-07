@@ -4,6 +4,24 @@ Plain-English record of what was built, why, and what changed. Newest sessions a
 
 ---
 
+## Session 9 — 2026-07-06
+
+**PRs: #17**
+
+Documentation completeness pass before release. Two Explore agents cross-referenced every doc file against the codebase and found factual inaccuracies, missing flags, and spec aspirations presented as shipped features.
+
+`docs/commands.md` received the most changes. `walk watch` had three factual errors: the burn rate description said "tokens/min" when the code emits "USD/hr"; the projection said "at this rate: $X total" when the code prints "8h proj: $X.XX" (8-hour window, hardcoded); and two unimplemented features ("context rot alerts" and "'lost in the middle' warnings") were listed as if they existed. The `--interval` flag was entirely absent from the flags table. Added the missing `walk scrub --output`/`-o` flag (writes clean output to a file) which had no documentation at all. Added complete JSON output schemas for every command (`analyze`, `compress`, `diff`, `watch`, `scrub`, `budget`, `cache analyze`). Clarified that `walk budget --set` is in-memory only and does not persist to config. Clarified that `walk watch` polls SQLite and does not intercept the Claude Code process. Removed unimplemented report output claims (cache hit ratio, savings baseline). Added format precedence note for `walk report`. Added CSV column list.
+
+`docs/security.md`: fixed the audit log format example — removed `model=` and `tokens=` fields that don't exist in the actual log line written by `session.go`.
+
+`docs/examples/codex.md`: removed `--model gpt-4o` from a `walk report` invocation — `walk report` has no `--model` flag; the command would have errored.
+
+`docs/examples/claude-code.md`: replaced the watch output sample with the actual format emitted by `watch.go` (pipe-separated status line with `burn: $X/hr` and `8h proj: $X.XX` fields).
+
+`walk-spec.md`: checked all MVP checklist items (`- [x]` for all — every item is shipped); removed the claim that walk auto-detects Metal acceleration on M-series Mac (not implemented); updated Homebrew tap entry to "planned, not yet available"; updated version timestamp to 2026-07-06.
+
+---
+
 ## Session 8 — 2026-07-04
 
 **PRs: #16**

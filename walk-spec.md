@@ -33,7 +33,7 @@ full visibility and control over token spend without sacrificing output quality.
 | Local LLM       | llama.cpp via `http://localhost:8080/v1`     |
 | Primary targets | macOS ARM64 (M-series), Linux amd64          |
 | Test framework  | `testing` (stdlib) + `testify`               |
-| Distribution    | Single binary, Homebrew tap, GitHub Releases |
+| Distribution    | Single binary, GitHub Releases (Homebrew tap: planned) |
 
 ---
 
@@ -308,7 +308,7 @@ release:     goreleaser release --clean
 - walk calls: `POST http://localhost:8080/v1/chat/completions`
 - Health check: `GET http://localhost:8080/health`
 - Tokenize endpoint: `POST http://localhost:8080/tokenize`
-- walk detects Metal acceleration on M-series Mac automatically via `/health` response
+- Metal acceleration must be enabled via `llama-server` flags (e.g. `--n-gpu-layers 99`) — walk does not configure this automatically
 - For M5 Max 36GB RAM: recommended models are Gemma 4 27B Q8 or GPT-4o-mini GGUF Q6
 
 ---
@@ -335,13 +335,13 @@ release:     goreleaser release --clean
 
 ## MVP Scope (Day 1 Target)
 
-- [ ] `walk init` — working config wizard
-- [ ] `walk analyze` — token count + cost + secret scan
-- [ ] `walk compress` — llama.cpp pipe compression
-- [ ] `walk scrub` — standalone secret scrubber
-- [ ] `walk budget --status` — show today's spend
-- [ ] Unit tests for: tokenizer, scrubber, config
-- [ ] README.md with install + quickstart
+- [x] `walk init` — working config wizard
+- [x] `walk analyze` — token count + cost + secret scan
+- [x] `walk compress` — llama.cpp pipe compression
+- [x] `walk scrub` — standalone secret scrubber
+- [x] `walk budget --status` — show today's spend
+- [x] Unit tests for: tokenizer, scrubber, config
+- [x] README.md with install + quickstart
 
 ---
 
@@ -356,4 +356,4 @@ When using this spec with Antigravity, Claude Code, or GitHub Copilot:
 
 ---
 
-_Last updated: 2026-06-28 | Version: 0.1.0-spec_
+_Last updated: 2026-07-06 | Version: 0.1.0-spec_

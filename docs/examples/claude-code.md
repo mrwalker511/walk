@@ -41,11 +41,11 @@ In a separate terminal, run the live monitor while Claude Code is running:
 walk watch --tool claude-code
 ```
 
-walk tracks the running token count and enforces the budget cap you set during `walk init`. When you approach the warning threshold (default: 80% of daily limit), you'll see:
+walk polls the local session database and enforces the budget cap you set during `walk init`. When you approach the warning threshold (default: 80% of daily limit), you'll see:
 
 ```
-⚠️  WARNING: 80% of daily budget used ($8.00 / $10.00)
-   Burn rate: 2,400 tokens/min — projected total: $11.20
+[15:04:05] spend: $8.0000 / $10.00 (80.0%) | tokens: 2.7M | burn: $0.312/hr | 8h proj: $10.50
+⚠ Warning: 80% of daily budget used
 ```
 
 If `budget.hard_stop: true`, walk exits and prevents further API calls once the cap is hit.

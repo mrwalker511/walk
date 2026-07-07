@@ -61,7 +61,7 @@ walk scrub payload.txt | send_to_llm || exit 1
 Every outbound payload is recorded in `~/.walk/audit.log` as a SHA-256 hash — **never as plaintext**. The format is:
 
 ```
-2026-07-03T14:22:01Z sha256=e3b0c44298fc1c149afb...  model=claude-sonnet-4-5  tokens=1247
+2026-07-03T14:22:01Z sha256=e3b0c44298fc1c149afb4f8b3af2b64e9ab...
 ```
 
 This lets you audit which sessions sent data and how much, without the audit log itself becoming a secrets store. The SHA-256 hash is computed in `internal/session.AuditLog` before any network call is made.
