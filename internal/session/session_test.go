@@ -24,9 +24,10 @@ func openTestDB(t *testing.T) *DB {
 func TestStartEndSession(t *testing.T) {
 	db := openTestDB(t)
 
-	id, err := db.StartSession("claude-sonnet-4-5", "test")
+	id, sessionUUID, err := db.StartSession("claude-sonnet-4-5", "test")
 	require.NoError(t, err)
 	assert.Greater(t, id, int64(0))
+	assert.NotEmpty(t, sessionUUID)
 
 	err = db.EndSession(id, 1000, 250, 100, 0.0035)
 	require.NoError(t, err)
@@ -34,6 +35,7 @@ func TestStartEndSession(t *testing.T) {
 	rec, err := db.GetSession(id)
 	require.NoError(t, err)
 	assert.Equal(t, id, rec.ID)
+	assert.Equal(t, sessionUUID, rec.SessionUUID)
 	assert.Equal(t, "claude-sonnet-4-5", rec.Model)
 	assert.Equal(t, int64(1000), rec.TokensIn)
 	assert.Equal(t, int64(250), rec.TokensOut)
@@ -45,13 +47,13 @@ func TestStartEndSession(t *testing.T) {
 func TestGetLastSession(t *testing.T) {
 	db := openTestDB(t)
 
-	id1, err := db.StartSession("gpt-4o", "first")
+	id1, _, err := db.StartSession("gpt-4o", "first")
 	require.NoError(t, err)
 	require.NoError(t, db.EndSession(id1, 100, 25, 0, 0.001))
 
 	time.Sleep(10 * time.Millisecond)
 
-	id2, err := db.StartSession("claude-sonnet-4-5", "second")
+	id2, _, err := db.StartSession("claude-sonnet-4-5", "second")
 	require.NoError(t, err)
 	require.NoError(t, db.EndSession(id2, 500, 125, 0, 0.002))
 
@@ -65,7 +67,7 @@ func TestListSessions(t *testing.T) {
 	db := openTestDB(t)
 
 	for i := 0; i < 3; i++ {
-		id, err := db.StartSession("gpt-4o", "")
+		id, _, err := db.StartSession("gpt-4o", "")
 		require.NoError(t, err)
 		require.NoError(t, db.EndSession(id, 100, 25, 0, 0.001))
 	}
@@ -84,7 +86,7 @@ func TestTodaySpend(t *testing.T) {
 	assert.Equal(t, 0.0, spend.CostUSD)
 
 	// Add a session
-	id, err := db.StartSession("claude-sonnet-4-5", "")
+	id, _, err := db.StartSession("claude-sonnet-4-5", "")
 	require.NoError(t, err)
 	require.NoError(t, db.EndSession(id, 1000, 250, 0, 0.006))
 
@@ -97,7 +99,7 @@ func TestTodaySpend(t *testing.T) {
 func TestResetDailySpend(t *testing.T) {
 	db := openTestDB(t)
 
-	id, err := db.StartSession("claude-sonnet-4-5", "")
+	id, _, err := db.StartSession("claude-sonnet-4-5", "")
 	require.NoError(t, err)
 	require.NoError(t, db.EndSession(id, 1000, 250, 0, 0.006))
 
@@ -128,7 +130,7 @@ func TestAuditLog(t *testing.T) {
 
 func TestTodaySpendIncludesCached(t *testing.T) {
 	db := openTestDB(t)
-	id, err := db.StartSession("claude-sonnet-4-5", "")
+	id, _, err := db.StartSession("claude-sonnet-4-5", "")
 	require.NoError(t, err)
 	// 500 in, 100 out, 200 cached — total should be 800
 	require.NoError(t, db.EndSession(id, 500, 100, 200, 0.003))

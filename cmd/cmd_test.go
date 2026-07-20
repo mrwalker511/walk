@@ -545,7 +545,7 @@ func newTestSession(t *testing.T, cfg *config.Config) *session.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	id, err := db.StartSession("claude-sonnet-4-5", "test")
+	id, _, err := db.StartSession("claude-sonnet-4-5", "test")
 	require.NoError(t, err)
 	require.NoError(t, db.EndSession(id, 1000, 250, 100, 0.003))
 	return db
@@ -675,7 +675,7 @@ func TestRunReportMultipleSessions(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	for i := 0; i < 3; i++ {
-		id, err := db.StartSession("claude-sonnet-4-5", "test")
+		id, _, err := db.StartSession("claude-sonnet-4-5", "test")
 		require.NoError(t, err)
 		require.NoError(t, db.EndSession(id, 100, 25, 0, 0.0003))
 	}
