@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
 
@@ -32,6 +33,56 @@ CREATE TABLE IF NOT EXISTS daily_spend (
 );
 `
 
+// sessionMigrations adds columns introduced after the initial schema.
+// SQLite has no "ADD COLUMN IF NOT EXISTS", so each is guarded by a
+// PRAGMA table_info check.
+var sessionMigrations = []struct {
+	column string
+	ddl    string
+}{
+	{"session_uuid", `ALTER TABLE sessions ADD COLUMN session_uuid TEXT`},
+	{"warning_count", `ALTER TABLE sessions ADD COLUMN warning_count INTEGER NOT NULL DEFAULT 0`},
+}
+
+func applyMigrations(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(sessions)`)
+	if err != nil {
+		return fmt.Errorf("reading sessions schema: %w", err)
+	}
+	existing := make(map[string]bool)
+	for rows.Next() {
+		var cid int
+		var name, colType string
+		var notNull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("scanning table_info: %w", err)
+		}
+		existing[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	_ = rows.Close()
+
+	for _, m := range sessionMigrations {
+		if existing[m.column] {
+			continue
+		}
+		if _, err := db.Exec(m.ddl); err != nil {
+			return fmt.Errorf("migrating column %s: %w", m.column, err)
+		}
+	}
+
+	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_uuid ON sessions(session_uuid) WHERE session_uuid IS NOT NULL`)
+	if err != nil {
+		return fmt.Errorf("indexing session_uuid: %w", err)
+	}
+	return nil
+}
+
 // DB wraps an SQLite connection for session tracking.
 type DB struct {
 	db       *sql.DB
@@ -41,6 +92,7 @@ type DB struct {
 // SessionRecord is a single session row.
 type SessionRecord struct {
 	ID           int64      `json:"id"`
+	SessionUUID  string     `json:"session_uuid,omitempty"`
 	StartedAt    time.Time  `json:"started_at"`
 	EndedAt      *time.Time `json:"ended_at,omitempty"`
 	Model        string     `json:"model"`
@@ -49,6 +101,7 @@ type SessionRecord struct {
 	TokensOut    int64      `json:"tokens_out"`
 	TokensCached int64      `json:"tokens_cached"`
 	CostUSD      float64    `json:"cost_usd"`
+	WarningCount int64      `json:"warning_count"`
 	Notes        string     `json:"notes,omitempty"`
 }
 
@@ -75,6 +128,11 @@ func Open(dbPath, auditLogPath string) (*DB, error) {
 		return nil, fmt.Errorf("applying schema: %w", err)
 	}
 
+	if err := applyMigrations(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
 	return &DB{db: db, auditLog: auditLogPath}, nil
 }
 
@@ -83,16 +141,34 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
-// StartSession inserts a new session row and returns its ID.
-func (d *DB) StartSession(model, tag string) (int64, error) {
+// StartSession inserts a new session row and returns its ID and a
+// globally-unique session UUID. The UUID is the correlation key used by
+// downstream consumers (e.g. `walk analyze --tag pr-123`) that need to
+// reference this session outside this machine's local SQLite ledger.
+func (d *DB) StartSession(model, tag string) (int64, string, error) {
+	sessionUUID := uuid.NewString()
 	res, err := d.db.Exec(
-		`INSERT INTO sessions (started_at, model, tag) VALUES (?, ?, ?)`,
-		time.Now().UTC(), model, tag,
+		`INSERT INTO sessions (started_at, model, tag, session_uuid) VALUES (?, ?, ?, ?)`,
+		time.Now().UTC(), model, tag, sessionUUID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("starting session: %w", err)
+		return 0, "", fmt.Errorf("starting session: %w", err)
 	}
-	return res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, "", fmt.Errorf("starting session: %w", err)
+	}
+	return id, sessionUUID, nil
+}
+
+// RecordAnalysis stores the warning count produced by `walk analyze` for
+// the given session.
+func (d *DB) RecordAnalysis(id int64, warningCount int) error {
+	_, err := d.db.Exec(`UPDATE sessions SET warning_count=? WHERE id=?`, warningCount, id)
+	if err != nil {
+		return fmt.Errorf("recording analysis for session %d: %w", id, err)
+	}
+	return nil
 }
 
 // EndSession records token usage and cost for a session.
@@ -117,10 +193,12 @@ func (d *DB) EndSession(id, tokensIn, tokensOut, tokensCached int64, costUSD flo
 	return err
 }
 
+const sessionColumns = `id, session_uuid, started_at, ended_at, model, tag, tokens_in, tokens_out, tokens_cached, cost_usd, warning_count, notes`
+
 // GetSession retrieves a session by ID.
 func (d *DB) GetSession(id int64) (*SessionRecord, error) {
 	row := d.db.QueryRow(
-		`SELECT id, started_at, ended_at, model, tag, tokens_in, tokens_out, tokens_cached, cost_usd, notes FROM sessions WHERE id=?`, id,
+		`SELECT `+sessionColumns+` FROM sessions WHERE id=?`, id,
 	)
 	return scanSession(row)
 }
@@ -128,7 +206,7 @@ func (d *DB) GetSession(id int64) (*SessionRecord, error) {
 // GetLastSession retrieves the most recently started session.
 func (d *DB) GetLastSession() (*SessionRecord, error) {
 	row := d.db.QueryRow(
-		`SELECT id, started_at, ended_at, model, tag, tokens_in, tokens_out, tokens_cached, cost_usd, notes FROM sessions ORDER BY id DESC LIMIT 1`,
+		`SELECT ` + sessionColumns + ` FROM sessions ORDER BY id DESC LIMIT 1`,
 	)
 	return scanSession(row)
 }
@@ -136,7 +214,7 @@ func (d *DB) GetLastSession() (*SessionRecord, error) {
 // ListSessions returns all sessions, newest first.
 func (d *DB) ListSessions() ([]SessionRecord, error) {
 	rows, err := d.db.Query(
-		`SELECT id, started_at, ended_at, model, tag, tokens_in, tokens_out, tokens_cached, cost_usd, notes FROM sessions ORDER BY id DESC`,
+		`SELECT ` + sessionColumns + ` FROM sessions ORDER BY id DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -199,16 +277,20 @@ type scanner interface {
 
 func scanSession(s scanner) (*SessionRecord, error) {
 	var rec SessionRecord
+	var sessionUUID sql.NullString
 	var startedAt string
 	var endedAt sql.NullString
 	err := s.Scan(
-		&rec.ID, &startedAt, &endedAt,
+		&rec.ID, &sessionUUID, &startedAt, &endedAt,
 		&rec.Model, &rec.Tag,
 		&rec.TokensIn, &rec.TokensOut, &rec.TokensCached,
-		&rec.CostUSD, &rec.Notes,
+		&rec.CostUSD, &rec.WarningCount, &rec.Notes,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if sessionUUID.Valid {
+		rec.SessionUUID = sessionUUID.String
 	}
 	if t, err := time.Parse(time.RFC3339, startedAt); err == nil {
 		rec.StartedAt = t

@@ -8,8 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/mrwalker511/walk/internal/analyzer"
+	"github.com/mrwalker511/walk/internal/session"
 	"github.com/mrwalker511/walk/internal/tokenizer"
 )
+
+var analyzeTag string
 
 var analyzeCmd = &cobra.Command{
 	Use:   "analyze [file]",
@@ -17,12 +20,17 @@ var analyzeCmd = &cobra.Command{
 	Long: `Analyze a prompt or payload file (or stdin) before sending to an LLM.
 
 Reports token count, estimated cost, dead-weight detection, repetition
-fingerprinting, and secret/PII scanning.`,
+fingerprinting, and secret/PII scanning.
+
+Every run is recorded in the local session ledger (~/.walk/sessions.db) so
+'walk report'/'walk budget' have real data to work from, and a session hash
+is appended to the audit log.`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE:  runAnalyze,
 }
 
 func init() {
+	analyzeCmd.Flags().StringVar(&analyzeTag, "tag", "", "session tag, e.g. a PR or workflow identifier")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -34,9 +42,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	m := "claude-sonnet-4-5"
 	threshold := 4.5
+	dbPath := "~/.walk/sessions.db"
+	auditLog := "~/.walk/audit.log"
 	if globalCfg != nil {
 		m = globalCfg.Providers.Anthropic.DefaultModel
 		threshold = globalCfg.Scrubber.EntropyThreshold
+		dbPath = globalCfg.Session.DBPath
+		auditLog = globalCfg.Session.AuditLog
 	}
 	if model != "" {
 		m = model
@@ -44,10 +56,34 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	report := analyzer.Analyze(text, m, threshold)
 
+	sessionID, sessionUUID := recordAnalyzeSession(expandHome(dbPath), expandHome(auditLog), m, text, report)
+
 	if jsonOut {
-		return printAnalyzeJSON(report)
+		return printAnalyzeJSON(report, sessionUUID)
 	}
-	return printAnalyzeTable(report)
+	return printAnalyzeTable(report, sessionID, sessionUUID)
+}
+
+// recordAnalyzeSession logs this analysis run to the local session ledger.
+// It fails open: a ledger problem (e.g. an unwritable ~/.walk) never blocks
+// `walk analyze` itself, it just means this run won't show up in
+// `walk report`/`walk budget`.
+func recordAnalyzeSession(dbPath, auditLog, m, text string, report analyzer.Report) (int64, string) {
+	db, err := session.Open(dbPath, auditLog)
+	if err != nil {
+		return 0, ""
+	}
+	defer func() { _ = db.Close() }()
+
+	id, sessionUUID, err := db.StartSession(m, analyzeTag)
+	if err != nil {
+		return 0, ""
+	}
+	_ = db.EndSession(id, int64(report.TokenCount), int64(report.EstimatedOutput), 0, report.TotalCost)
+	_ = db.RecordAnalysis(id, len(report.Warnings))
+	_ = db.AuditLog(text)
+
+	return id, sessionUUID
 }
 
 func readInput(args []string) (string, error) {
@@ -66,9 +102,12 @@ func readInput(args []string) (string, error) {
 	return string(b), nil
 }
 
-func printAnalyzeTable(r analyzer.Report) error {
+func printAnalyzeTable(r analyzer.Report, sessionID int64, sessionUUID string) error {
 	if !quiet {
 		fmt.Println("=== walk analyze ===")
+		if sessionUUID != "" {
+			fmt.Printf("Session:        %d (%s)\n", sessionID, sessionUUID)
+		}
 		fmt.Printf("Model:          %s\n", r.Model)
 		fmt.Printf("Tokens:         %s (est. output: %s)\n", formatTokens(r.TokenCount), formatTokens(r.EstimatedOutput))
 		fmt.Printf("Words:          %d\n", r.WordCount)
@@ -110,6 +149,7 @@ func printAnalyzeTable(r analyzer.Report) error {
 }
 
 type analyzeJSON struct {
+	SessionID       string              `json:"session_id,omitempty"`
 	Model           string              `json:"model"`
 	TokenCount      int                 `json:"token_count"`
 	WordCount       int                 `json:"word_count"`
@@ -122,8 +162,9 @@ type analyzeJSON struct {
 	HasSecrets      bool                `json:"has_secrets"`
 }
 
-func printAnalyzeJSON(r analyzer.Report) error {
+func printAnalyzeJSON(r analyzer.Report, sessionUUID string) error {
 	out := analyzeJSON{
+		SessionID:       sessionUUID,
 		Model:           r.Model,
 		TokenCount:      r.TokenCount,
 		WordCount:       r.WordCount,
